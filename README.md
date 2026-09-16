@@ -44,3 +44,4 @@ Institutional-grade financial analytics dashboard built in Microsoft Power BI (P
 This project leverages Microsoft Power BI's PBIP format for developer-friendly source control:
 * `*.Report`: Visual configurations, layout, formatting, and page definitions.
 * `*.SemanticModel`: Tabular model definition, relationships, and DAX measures.
+* `scripts/`: Data ingestion, processing, and local database management (`DuckDB`).
