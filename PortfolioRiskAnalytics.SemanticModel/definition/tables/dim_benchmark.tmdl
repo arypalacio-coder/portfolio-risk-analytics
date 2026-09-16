@@ -1,0 +1,48 @@
+table dim_benchmark
+	lineageTag: b3a4809a-a26f-4bdf-b65d-8992bfaf9d6a
+
+	column bench_key
+		dataType: int64
+		formatString: 0
+		lineageTag: 5fd994a4-c26b-43f9-8c5b-6dcdc2c8064a
+		summarizeBy: sum
+		sourceColumn: bench_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column ticker
+		dataType: string
+		lineageTag: f414cae3-2024-406e-b81a-ca2d6ec4e4f3
+		summarizeBy: none
+		sourceColumn: ticker
+
+		annotation SummarizationSetBy = Automatic
+
+	column bench_name
+		dataType: string
+		lineageTag: 13dbc824-6d4a-44e8-b5b0-81160af83fcb
+		summarizeBy: none
+		sourceColumn: bench_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column description
+		dataType: string
+		lineageTag: a070aed1-936b-4917-92c3-087e1ef1c3de
+		summarizeBy: none
+		sourceColumn: description
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_benchmark = m
+		mode: import
+		source =
+				let
+				  Origen = Csv.Document(File.Contents("C:\Users\Ary Palacios\Desktop\portfolio-risk-analytics\data\processed\dim_benchmark.csv"), [Delimiter = ",", Columns = 4, QuoteStyle = QuoteStyle.None]),
+				  #"Encabezados promovidos" = Table.PromoteHeaders(Origen, [PromoteAllScalars = true]),
+				  #"Tipo de columna cambiado" = Table.TransformColumnTypes(#"Encabezados promovidos", {{"bench_key", Int64.Type}, {"ticker", type text}, {"bench_name", type text}, {"description", type text}}, "es")
+				in
+				  #"Tipo de columna cambiado"
+
+	annotation PBI_ResultType = Table
+

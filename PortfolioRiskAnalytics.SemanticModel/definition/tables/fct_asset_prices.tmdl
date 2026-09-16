@@ -1,0 +1,69 @@
+table fct_asset_prices
+	lineageTag: dea2453c-a0b5-4ed5-b23a-6d8956a1d20b
+
+	column price_id
+		dataType: int64
+		formatString: 0
+		lineageTag: 067cd1c2-8b97-46da-930a-8758047d410a
+		summarizeBy: sum
+		sourceColumn: price_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column date_key
+		dataType: int64
+		formatString: 0
+		lineageTag: 156dc5b4-fe5c-42e5-88c7-e422b11f3308
+		summarizeBy: none
+		sourceColumn: date_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column asset_key
+		dataType: int64
+		formatString: 0
+		lineageTag: f0153fe4-502f-4f2f-8f24-46fa7a3fba29
+		summarizeBy: none
+		sourceColumn: asset_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column adj_close
+		dataType: double
+		formatString: 0
+		lineageTag: 4dcd959e-cbc8-4c07-8111-b7463974712b
+		summarizeBy: sum
+		sourceColumn: adj_close
+
+		annotation SummarizationSetBy = Automatic
+
+	column return_1d
+		dataType: double
+		formatString: 0
+		lineageTag: a0c63350-86bd-440a-a55b-2e59b38e4829
+		summarizeBy: sum
+		sourceColumn: return_1d
+
+		annotation SummarizationSetBy = Automatic
+
+	partition fct_asset_prices = m
+		mode: import
+		source = ```
+				let
+				    Origen = Csv.Document(File.Contents("C:\Users\Ary Palacios\Desktop\portfolio-risk-analytics\data\processed\fct_asset_prices.csv"), [Delimiter = ",", Columns = 5, QuoteStyle = QuoteStyle.None]),
+				    #"Encabezados promovidos" = Table.PromoteHeaders(Origen, [PromoteAllScalars = true]),
+				    #"Tipo de columna cambiado" = Table.TransformColumnTypes(#"Encabezados promovidos", {
+				        {"price_id", Int64.Type}, 
+				        {"date_key", Int64.Type}, 
+				        {"asset_key", Int64.Type}, 
+				        {"adj_close", type number}, 
+				        {"return_1d", type number}
+				    }, "en-US")
+				in
+				    #"Tipo de columna cambiado"
+				```
+
+	annotation PBI_ResultType = Table
+
+	annotation PBI_NavigationStepName = Navegación
+

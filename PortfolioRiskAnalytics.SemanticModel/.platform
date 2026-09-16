@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "PortfolioRiskAnalytics"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "2a9d0429-485b-43fe-b8e8-790bc3524dac"
+  }
+}

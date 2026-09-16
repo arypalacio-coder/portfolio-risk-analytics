@@ -1,0 +1,15 @@
+txn_id,date_key,asset_key,txn_type,units,price,amount,notes
+1,20210104,7,DEPOSIT,0.0,100.0,10000000.0,Initial capital injection
+2,20210104,1,BUY,10500.0,370.0,-3885000.0,Initial allocation SPY (40%)
+3,20210104,2,BUY,6300.0,313.0,-1971900.0,Initial allocation QQQ (20%)
+4,20210104,4,BUY,9500.0,157.0,-1491500.0,Initial allocation TLT (15%)
+5,20210104,5,BUY,11500.0,88.0,-1012000.0,Initial allocation BND (10%)
+6,20210104,6,BUY,5300.0,182.0,-964600.0,Initial allocation GLD (10%)
+7,20210104,7,BUY,6750.0,100.0,-675000.0,Cash reserve BIL (5%)
+8,20220615,1,BUY,2500.0,379.0,-947500.0,Rebalancing pull-back buy SPY
+9,20220615,7,SELL,-9475.0,100.0,947500.0,Funding SPY from cash reserves
+10,20230110,2,BUY,3000.0,275.0,-825000.0,Strategic expansion tech allocation QQQ
+11,20240315,6,SELL,-1500.0,200.0,300000.0,Tactical profit taking on GLD
+12,20240315,7,BUY,3000.0,100.0,-300000.0,Sweep profit to cash buffer
+13,20250210,5,BUY,4000.0,73.0,-292000.0,Bond duration lock BND
+14,20260115,7,DEPOSIT,0.0,100.0,2000000.0,Institutional top-up cash injection

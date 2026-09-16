@@ -1,0 +1,97 @@
+table fct_transactions
+	lineageTag: f7e160fc-25fd-4deb-b97c-eb6820dde72c
+
+	column txn_id
+		dataType: int64
+		formatString: 0
+		lineageTag: 76605b5f-0ed7-4552-97f0-21134b9abd93
+		summarizeBy: sum
+		sourceColumn: txn_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column date_key
+		dataType: int64
+		formatString: 0
+		lineageTag: 314cb1c5-e464-42cd-b1a9-3fb0920ab8f6
+		summarizeBy: none
+		sourceColumn: date_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column asset_key
+		dataType: int64
+		formatString: 0
+		lineageTag: c4157ecc-4807-4fc4-bcfa-79a3b16773d8
+		summarizeBy: none
+		sourceColumn: asset_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column txn_type
+		dataType: string
+		lineageTag: c33f98b5-6144-4ee2-b520-0635c1794700
+		summarizeBy: none
+		sourceColumn: txn_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column units
+		dataType: double
+		formatString: 0
+		lineageTag: 70652849-588e-4321-916a-c76b353bfcce
+		summarizeBy: sum
+		sourceColumn: units
+
+		annotation SummarizationSetBy = Automatic
+
+	column price
+		dataType: double
+		formatString: 0
+		lineageTag: 3627b0a6-2e4b-4de8-8cee-75f34b0a5bb3
+		summarizeBy: sum
+		sourceColumn: price
+
+		annotation SummarizationSetBy = Automatic
+
+	column amount
+		dataType: double
+		formatString: 0
+		lineageTag: 1d6433a4-8954-4d2a-b7b0-6323c2b408d3
+		summarizeBy: sum
+		sourceColumn: amount
+
+		annotation SummarizationSetBy = Automatic
+
+	column notes
+		dataType: string
+		lineageTag: cf1b7212-a552-42cd-984c-d7203437a8a4
+		summarizeBy: none
+		sourceColumn: notes
+
+		annotation SummarizationSetBy = Automatic
+
+	partition fct_transactions = m
+		mode: import
+		source = ```
+				let
+				    Origen = Csv.Document(File.Contents("C:\Users\Ary Palacios\Desktop\portfolio-risk-analytics\data\processed\fct_transactions.csv"), [Delimiter = ",", Columns = 8, QuoteStyle = QuoteStyle.None]),
+				    #"Encabezados promovidos" = Table.PromoteHeaders(Origen, [PromoteAllScalars = true]),
+				    #"Tipo de columna cambiado" = Table.TransformColumnTypes(#"Encabezados promovidos", {
+				        {"txn_id", Int64.Type}, 
+				        {"date_key", Int64.Type}, 
+				        {"asset_key", Int64.Type}, 
+				        {"txn_type", type text}, 
+				        {"units", type number}, 
+				        {"price", type number}, 
+				        {"amount", type number}, 
+				        {"notes", type text}
+				    }, "en-US")
+				in
+				    #"Tipo de columna cambiado"
+				```
+
+	annotation PBI_ResultType = Table
+
+	annotation PBI_NavigationStepName = Navegación
+

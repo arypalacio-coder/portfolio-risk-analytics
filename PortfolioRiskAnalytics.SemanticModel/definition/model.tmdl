@@ -1,0 +1,24 @@
+model Model
+	culture: es-ES
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: es-CL
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_QueryOrder = ["dim_asset","dim_benchmark","dim_date","fct_asset_prices","fct_daily_positions","fct_transactions"]
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table dim_asset
+ref table dim_benchmark
+ref table dim_date
+ref table fct_asset_prices
+ref table fct_daily_positions
+ref table fct_transactions
+ref table _Measures
+
+ref cultureInfo es-ES
+

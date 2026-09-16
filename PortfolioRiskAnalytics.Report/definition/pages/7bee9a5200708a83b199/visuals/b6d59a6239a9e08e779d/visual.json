@@ -1,0 +1,148 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.10.0/schema.json",
+  "name": "b6d59a6239a9e08e779d",
+  "position": {
+    "x": 11.304923824243764,
+    "y": 273.57915654669904,
+    "z": 2,
+    "height": 427.32612055641425,
+    "width": 949.61360123647614,
+    "tabOrder": 2
+  },
+  "visual": {
+    "visualType": "scatterChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_asset"
+                    }
+                  },
+                  "Property": "ticker"
+                }
+              },
+              "queryRef": "dim_asset.ticker",
+              "nativeQueryRef": "ticker",
+              "active": true
+            }
+          ]
+        },
+        "Series": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_asset"
+                    }
+                  },
+                  "Property": "asset_class"
+                }
+              },
+              "queryRef": "dim_asset.asset_class",
+              "nativeQueryRef": "asset_class"
+            }
+          ]
+        },
+        "Size": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Measures"
+                    }
+                  },
+                  "Property": "Current Value"
+                }
+              },
+              "queryRef": "_Measures.Current Value",
+              "nativeQueryRef": "Current Value"
+            }
+          ]
+        },
+        "X": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Measures"
+                    }
+                  },
+                  "Property": "Asset Volatility Annualized"
+                }
+              },
+              "queryRef": "_Measures.Portfolio Volatility Annualized",
+              "nativeQueryRef": "Volatility Annualized",
+              "active": true,
+              "displayName": "Volatility Annualized"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Measures"
+                    }
+                  },
+                  "Property": "Asset Return Annualized"
+                }
+              },
+              "queryRef": "_Measures.Asset Return Annualized",
+              "nativeQueryRef": "Asset Return Annualized"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Risk vs. Return Mapping'"
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "17D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "subTitle": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

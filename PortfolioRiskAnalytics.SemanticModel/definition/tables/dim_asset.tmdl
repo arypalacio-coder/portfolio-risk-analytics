@@ -1,0 +1,72 @@
+table dim_asset
+	lineageTag: e7768751-8c17-46fe-b071-1441bf1d7ae4
+
+	column asset_key
+		dataType: int64
+		formatString: 0
+		lineageTag: 1a8e9652-384b-4958-a6cf-c7996ea323fb
+		summarizeBy: none
+		sourceColumn: asset_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column ticker
+		dataType: string
+		lineageTag: 03942f29-ca1b-42d5-987e-0a81796db0d5
+		summarizeBy: none
+		sourceColumn: ticker
+
+		annotation SummarizationSetBy = Automatic
+
+	column asset_name
+		dataType: string
+		lineageTag: bb43419c-e1de-4744-98c2-55ee7074a103
+		summarizeBy: none
+		sourceColumn: asset_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column asset_class
+		dataType: string
+		lineageTag: 9e503ad6-8cea-4a8d-9d47-b417f763644f
+		summarizeBy: none
+		sourceColumn: asset_class
+
+		annotation SummarizationSetBy = Automatic
+
+	column geography
+		dataType: string
+		lineageTag: f293461b-a7a9-45da-aeaf-5a7708b03495
+		summarizeBy: none
+		sourceColumn: geography
+
+		annotation SummarizationSetBy = Automatic
+
+	column sector
+		dataType: string
+		lineageTag: 3a98f1d1-9a0e-4ba7-9114-f71b6d452146
+		summarizeBy: none
+		sourceColumn: sector
+
+		annotation SummarizationSetBy = Automatic
+
+	column issuer
+		dataType: string
+		lineageTag: 47977b49-ef41-434f-b03e-31390facaf38
+		summarizeBy: none
+		sourceColumn: issuer
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_asset = m
+		mode: import
+		source =
+				let
+				  Origen = Csv.Document(File.Contents("C:\Users\Ary Palacios\Desktop\portfolio-risk-analytics\data\processed\dim_asset.csv"), [Delimiter = ",", Columns = 7, QuoteStyle = QuoteStyle.None]),
+				  #"Encabezados promovidos" = Table.PromoteHeaders(Origen, [PromoteAllScalars = true]),
+				  #"Tipo de columna cambiado" = Table.TransformColumnTypes(#"Encabezados promovidos", {{"asset_key", Int64.Type}, {"ticker", type text}, {"asset_name", type text}, {"asset_class", type text}, {"geography", type text}, {"sector", type text}, {"issuer", type text}}, "es")
+				in
+				  #"Tipo de columna cambiado"
+
+	annotation PBI_ResultType = Table
+

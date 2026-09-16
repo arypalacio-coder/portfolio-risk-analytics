@@ -1,0 +1,589 @@
+table _Measures
+	isHidden
+	lineageTag: a1f3c8d2-9e47-4b61-bc3a-0f2e1a7d8c94
+
+	measure 'Total NAV' = ```
+			
+			VAR _LastDateWithData = 
+			    CALCULATE(
+			        MAX(fct_daily_positions[date_key]),
+			        ALL(fct_daily_positions)
+			    )
+			RETURN
+			    CALCULATE(
+			        SUM(fct_daily_positions[market_value]),
+			        FILTER(
+			            ALL(fct_daily_positions),
+			            fct_daily_positions[date_key] = _LastDateWithData
+			        )
+			    )
+			```
+		formatString: $#,0.00
+		lineageTag: b2a4f1e3-7c58-4d82-a9f5-1e3b0d6c8f47
+
+	measure 'Portfolio Return Daily' =
+			VAR _DatesWithData =
+			    CALCULATETABLE(
+			        VALUES(dim_date[date_key]),
+			        fct_daily_positions
+			    )
+			RETURN
+			    AVERAGEX(
+			        _DatesWithData,
+			        VAR _CurrentKey = dim_date[date_key]
+			        VAR _CurrentVal = CALCULATE(SUM(fct_daily_positions[market_value]))
+			        VAR _PrevKey =
+			            CALCULATE(
+			                MAX(fct_daily_positions[date_key]),
+			                FILTER(ALL(fct_daily_positions[date_key]), fct_daily_positions[date_key] < _CurrentKey)
+			            )
+			        VAR _PrevVal =
+			            CALCULATE(
+			                SUM(fct_daily_positions[market_value]),
+			                fct_daily_positions[date_key] = _PrevKey,
+			                REMOVEFILTERS(dim_date)
+			            )
+			        RETURN
+			            IF(NOT ISBLANK(_PrevVal) && _PrevVal > 0, DIVIDE(_CurrentVal - _PrevVal, _PrevVal), BLANK())
+			    )
+		formatString: 0.00%
+		lineageTag: c3b5e2f4-8d69-4e93-ba06-2f4c1e7d9a58
+
+	measure 'Portfolio Return Annualized' = COALESCE([Portfolio Return Daily] * 252, 0)
+		formatString: 0.00%
+		lineageTag: d4c6f3a5-9e7a-4fa4-cb17-3a5d2f8e0b69
+
+	measure 'Asset Volatility Annualized' = ```
+			
+			VAR _DailyReturns = 
+			    ADDCOLUMNS(
+			        fct_asset_prices,
+			        "@Return", fct_asset_prices[return_1d]
+			    )
+			VAR _StdDev = STDEVX.S(_DailyReturns, [@Return])
+			RETURN
+			    IF(
+			        NOT ISBLANK(_StdDev),
+			        _StdDev * SQRT(252),
+			        BLANK()
+			    )
+			```
+		formatString: 0.00%
+		lineageTag: e5d7a4b6-af8b-4a05-dc28-4b6e3a9f1c70
+
+	measure 'Benchmark Return Annualized' =
+			VAR _SpyAssetKey =
+			    CALCULATE(
+			        MIN(dim_asset[asset_key]),
+			        dim_asset[ticker] = "SPY",
+			        ALL(dim_asset)
+			    )
+			RETURN
+			    COALESCE(
+			        CALCULATE(
+			            AVERAGE(fct_asset_prices[return_1d]),
+			            fct_asset_prices[asset_key] = _SpyAssetKey
+			        ) * 252,
+			        0
+			    )
+		formatString: 0.00%
+		lineageTag: f6e8b5c7-b09c-4b16-ed39-5c7f4b0a2d81
+
+	measure 'Asset Sharpe Ratio' =
+			
+			VAR _Return = [Asset Return Annualized]
+			VAR _Vol = [Asset Volatility Annualized]
+			VAR _Rf = 0.0 -- Risk-free rate
+			RETURN
+			    IF(
+			        NOT ISBLANK(_Vol) && _Vol > 0,
+			        DIVIDE(_Return - _Rf, _Vol),
+			        BLANK()
+			    )
+		formatString: 0.00
+		lineageTag: a7f9c6d8-c1ad-4c27-fe4a-6d8a5c1b3e92
+
+	measure 'Maximum Drawdown (MDD)' = ```
+			
+			VAR _DailyPortfolio = 
+			    CALCULATETABLE(
+			        SUMMARIZE(
+			            fct_daily_positions,
+			            fct_daily_positions[date_key],
+			            "@NAV", SUM(fct_daily_positions[market_value])
+			        ),
+			        REMOVEFILTERS(dim_date),
+			        REMOVEFILTERS(dim_asset)
+			    )
+			VAR _Valid = FILTER(_DailyPortfolio, [@NAV] > 0)
+			VAR _WithRunningPeak = 
+			    ADDCOLUMNS(
+			        _Valid,
+			        "@Peak", 
+			            VAR _CurrentDate = fct_daily_positions[date_key]
+			            RETURN MAXX(FILTER(_Valid, fct_daily_positions[date_key] <= _CurrentDate), [@NAV])
+			    )
+			VAR _Drawdowns = 
+			    ADDCOLUMNS(
+			        _WithRunningPeak,
+			        "@DD", DIVIDE([@NAV] - [@Peak], [@Peak])
+			    )
+			VAR _MaxDD = MINX(_Drawdowns, [@DD])
+			RETURN
+			    _MaxDD
+			```
+		formatString: 0.00%
+		lineageTag: b8aad7e9-d2be-4d38-af5b-7e9b6d2c4f03
+
+	measure 'Cumulative Portfolio Return' = ```
+			
+			VAR _FirstDateKey = 
+			    CALCULATE(
+			        MIN(fct_daily_positions[date_key]),
+			        REMOVEFILTERS()
+			    )
+			VAR _LastDateKey = 
+			    CALCULATE(
+			        MAX(fct_daily_positions[date_key]),
+			        ALLSELECTED(fct_daily_positions)
+			    )
+			VAR _InitialNAV = 
+			    CALCULATE(
+			        SUM(fct_daily_positions[market_value]),
+			        fct_daily_positions[date_key] = _FirstDateKey,
+			        REMOVEFILTERS()
+			    )
+			VAR _CurrentNAV = 
+			    IF(
+			        ISINSCOPE(dim_date[calendar_date]),
+			        SUM(fct_daily_positions[market_value]),
+			        CALCULATE(
+			            SUM(fct_daily_positions[market_value]),
+			            fct_daily_positions[date_key] = _LastDateKey,
+			            REMOVEFILTERS(dim_date)
+			        )
+			    )
+			RETURN
+			    IF(
+			        NOT ISBLANK(_CurrentNAV) && _CurrentNAV > 0 && _InitialNAV > 0,
+			        DIVIDE(_CurrentNAV - _InitialNAV, _InitialNAV),
+			        BLANK()
+			    )
+			```
+		formatString: 0.00%
+		lineageTag: f7e9c8b2-1a2b-4c3d-9e4f-5a6b7c8d9e0f
+
+	measure 'Cumulative Benchmark Return' = ```
+			
+			VAR _BenchmarkKey = 1 -- SPY
+			VAR _FirstDateKey = 
+			    CALCULATE(
+			        MIN(fct_asset_prices[date_key]),
+			        fct_asset_prices[asset_key] = _BenchmarkKey,
+			        REMOVEFILTERS()
+			    )
+			VAR _InitialPrice = 
+			    CALCULATE(
+			        MAX(fct_asset_prices[adj_close]),
+			        fct_asset_prices[asset_key] = _BenchmarkKey,
+			        fct_asset_prices[date_key] = _FirstDateKey,
+			        REMOVEFILTERS()
+			    )
+			VAR _CurrentDateKey = MAX(dim_date[date_key])
+			VAR _CurrentPrice = 
+			    CALCULATE(
+			        MAX(fct_asset_prices[adj_close]),
+			        fct_asset_prices[asset_key] = _BenchmarkKey,
+			        fct_asset_prices[date_key] = _CurrentDateKey
+			    )
+			RETURN
+			    IF(
+			        NOT ISBLANK(_CurrentPrice) && _InitialPrice > 0,
+			        DIVIDE(_CurrentPrice - _InitialPrice, _InitialPrice),
+			        BLANK()
+			    )
+			```
+		formatString: 0.00%
+		lineageTag: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+
+	measure 'Sortino Ratio' =
+			VAR _RfDaily = 0.045 / 252
+			VAR _DatesWithData =
+			    CALCULATETABLE(
+			        VALUES(dim_date[date_key]),
+			        fct_daily_positions
+			    )
+			VAR _DownsideVariance =
+			    AVERAGEX(
+			        _DatesWithData,
+			        VAR _CurrentKey = dim_date[date_key]
+			        VAR _CurrentVal = CALCULATE(SUM(fct_daily_positions[market_value]))
+			        VAR _PrevKey =
+			            CALCULATE(
+			                MAX(fct_daily_positions[date_key]),
+			                FILTER(ALL(fct_daily_positions[date_key]), fct_daily_positions[date_key] < _CurrentKey)
+			            )
+			        VAR _PrevVal =
+			            CALCULATE(
+			                SUM(fct_daily_positions[market_value]),
+			                fct_daily_positions[date_key] = _PrevKey,
+			                REMOVEFILTERS(dim_date)
+			            )
+			        VAR _Ret = IF(NOT ISBLANK(_PrevVal) && _PrevVal > 0, DIVIDE(_CurrentVal - _PrevVal, _PrevVal), 0)
+			        RETURN
+			            IF(_Ret < _RfDaily, (_Ret - _RfDaily) ^ 2, 0)
+			    )
+			VAR _DownsideDev = SQRT(_DownsideVariance) * SQRT(252)
+			RETURN
+			    IF(_DownsideDev > 0, DIVIDE([Portfolio Return Annualized] - 0.045, _DownsideDev, 0), 0)
+		formatString: 0.00
+		lineageTag: b8a0d1e2-f3c4-4d5e-a6f7-8b9c0d1e2f3a
+
+	measure 'Value at Risk 95 (Historical)' =
+			VAR _DatesWithData =
+			    CALCULATETABLE(
+			        VALUES(dim_date[date_key]),
+			        fct_daily_positions
+			    )
+			VAR _DailyTable =
+			    ADDCOLUMNS(
+			        _DatesWithData,
+			        "DailyRet",
+			        VAR _CurrentKey = dim_date[date_key]
+			        VAR _CurrentVal = CALCULATE(SUM(fct_daily_positions[market_value]))
+			        VAR _PrevKey =
+			            CALCULATE(
+			                MAX(fct_daily_positions[date_key]),
+			                FILTER(ALL(fct_daily_positions[date_key]), fct_daily_positions[date_key] < _CurrentKey)
+			            )
+			        VAR _PrevVal =
+			            CALCULATE(
+			                SUM(fct_daily_positions[market_value]),
+			                fct_daily_positions[date_key] = _PrevKey,
+			                REMOVEFILTERS(dim_date)
+			            )
+			        RETURN
+			            IF(NOT ISBLANK(_PrevVal) && _PrevVal > 0, DIVIDE(_CurrentVal - _PrevVal, _PrevVal), BLANK())
+			    )
+			RETURN
+			    COALESCE(-1 * PERCENTILEX.INC(FILTER(_DailyTable, NOT ISBLANK([DailyRet])), [DailyRet], 0.05), 0)
+		formatString: 0.00%
+		lineageTag: c9b1e2f3-a4b5-4c6d-b7e8-9f0a1b2c3d4e
+
+	measure 'Portfolio Beta' =
+			VAR _DatesWithData =
+			    CALCULATETABLE(
+			        VALUES(dim_date[date_key]),
+			        fct_daily_positions
+			    )
+			VAR _SpyAssetKey =
+			    CALCULATE(
+			        MIN(dim_asset[asset_key]),
+			        dim_asset[ticker] = "SPY",
+			        ALL(dim_asset)
+			    )
+			VAR _Table =
+			    FILTER(
+			        ADDCOLUMNS(
+			            _DatesWithData,
+			            "PortRet",
+			                VAR _CurrentKey = dim_date[date_key]
+			                VAR _CurrentVal = CALCULATE(SUM(fct_daily_positions[market_value]))
+			                VAR _PrevKey =
+			                    CALCULATE(
+			                        MAX(fct_daily_positions[date_key]),
+			                        FILTER(ALL(fct_daily_positions[date_key]), fct_daily_positions[date_key] < _CurrentKey)
+			                    )
+			                VAR _PrevVal =
+			                    CALCULATE(
+			                        SUM(fct_daily_positions[market_value]),
+			                        fct_daily_positions[date_key] = _PrevKey,
+			                        REMOVEFILTERS(dim_date)
+			                    )
+			                RETURN
+			                    IF(NOT ISBLANK(_PrevVal) && _PrevVal > 0, DIVIDE(_CurrentVal - _PrevVal, _PrevVal), BLANK()),
+			            "BenchRet",
+			                CALCULATE(
+			                    AVERAGE(fct_asset_prices[return_1d]),
+			                    fct_asset_prices[asset_key] = _SpyAssetKey
+			                )
+			        ),
+			        NOT ISBLANK([PortRet]) && NOT ISBLANK([BenchRet])
+			    )
+			VAR _AvgP = AVERAGEX(_Table, [PortRet])
+			VAR _AvgB = AVERAGEX(_Table, [BenchRet])
+			VAR _Covariance = AVERAGEX(_Table, ([PortRet] - _AvgP) * ([BenchRet] - _AvgB))
+			VAR _VarBench = VARX.P(_Table, [BenchRet])
+			RETURN
+			    IF(_VarBench > 0, DIVIDE(_Covariance, _VarBench, 0), 1)
+		formatString: 0.00
+		lineageTag: d0c2f3a4-b5c6-4d7e-c8f9-0a1b2c3d4e5f
+
+	measure 'Jensen''s Alpha' =
+			VAR _Rf = 0.045
+			VAR _ExpReturn = _Rf + [Portfolio Beta] * ([Benchmark Return Annualized] - _Rf)
+			RETURN
+			    [Portfolio Return Annualized] - _ExpReturn
+		formatString: 0.00%
+		lineageTag: e1d3a4b5-c6d7-4e8f-d9a0-1b2c3d4e5f6a
+
+	measure 'Tracking Error' =
+			VAR _DatesWithData =
+			    CALCULATETABLE(
+			        VALUES(dim_date[date_key]),
+			        fct_daily_positions
+			    )
+			VAR _SpyAssetKey =
+			    CALCULATE(
+			        MIN(dim_asset[asset_key]),
+			        dim_asset[ticker] = "SPY",
+			        ALL(dim_asset)
+			    )
+			VAR _DiffStd =
+			    STDEVX.P(
+			        _DatesWithData,
+			        VAR _CurrentKey = dim_date[date_key]
+			        VAR _CurrentVal = CALCULATE(SUM(fct_daily_positions[market_value]))
+			        VAR _PrevKey =
+			            CALCULATE(
+			                MAX(fct_daily_positions[date_key]),
+			                FILTER(ALL(fct_daily_positions[date_key]), fct_daily_positions[date_key] < _CurrentKey)
+			            )
+			        VAR _PrevVal =
+			            CALCULATE(
+			                SUM(fct_daily_positions[market_value]),
+			                fct_daily_positions[date_key] = _PrevKey,
+			                REMOVEFILTERS(dim_date)
+			            )
+			        VAR _PortRet = IF(NOT ISBLANK(_PrevVal) && _PrevVal > 0, DIVIDE(_CurrentVal - _PrevVal, _PrevVal), BLANK())
+			        VAR _BenchRet = CALCULATE(AVERAGE(fct_asset_prices[return_1d]), fct_asset_prices[asset_key] = _SpyAssetKey)
+			        RETURN
+			            IF(NOT ISBLANK(_PortRet) && NOT ISBLANK(_BenchRet), _PortRet - _BenchRet, BLANK())
+			    )
+			RETURN
+			    COALESCE(_DiffStd * SQRT(252), 0)
+		formatString: 0.00%
+		lineageTag: f2e4b5c6-d7e8-4f9a-e0b1-2c3d4e5f6a7b
+
+	measure 'Portfolio Daily NAV' =
+			
+			SUM(fct_daily_positions[market_value])
+		lineageTag: f1075d57-478d-4fac-bc59-e6388ef24287
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Current Value' = ```
+			
+			VAR _MaxPosDate = 
+			    CALCULATE(
+			        MAX(fct_daily_positions[date_key]),
+			        REMOVEFILTERS(dim_date)
+			    )
+			VAR _VisibleMaxDate = MAX(dim_date[date_key])
+			VAR _TargetDate = 
+			    IF(
+			        ISBLANK(_VisibleMaxDate), 
+			        _MaxPosDate, 
+			        MIN(_VisibleMaxDate, _MaxPosDate)
+			    )
+			RETURN
+			    CALCULATE(
+			        SUM(fct_daily_positions[market_value]),
+			        REMOVEFILTERS(dim_date),
+			        fct_daily_positions[date_key] = _TargetDate
+			    )
+			```
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		lineageTag: c36b5719-d497-4e29-8562-afa2e2260b1b
+
+		annotation PBI_FormatHint = {"currencyCulture":"es-US"}
+
+	measure 'Weight %' =
+			
+			VAR _TotalNAV = [Total NAV]
+			VAR _AssetVal = [Current Value]
+			RETURN
+			    IF(
+			        _TotalNAV > 0 && NOT ISBLANK(_AssetVal),
+			        DIVIDE(_AssetVal, _TotalNAV),
+			        BLANK()
+			    )
+		formatString: 0.00\ %;-0.00\ %;0.00\ %
+		lineageTag: 6c957dc9-16c3-4cef-8bd6-ca9b7f165e94
+
+	measure 'Asset Return Annualized' = ```
+			
+			VAR _DailyReturns = 
+			    ADDCOLUMNS(
+			        fct_asset_prices,
+			        "@Return", fct_asset_prices[return_1d]
+			    )
+			VAR _AvgReturn = AVERAGEX(_DailyReturns, [@Return])
+			RETURN
+			    IF(
+			        NOT ISBLANK(_AvgReturn),
+			        _AvgReturn * 252,
+			        BLANK()
+			    )
+			```
+		formatString: 0.00\ %;-0.00\ %;0.00\ %
+		lineageTag: 10611726-6faa-4ca5-a56e-1d879d775c7f
+
+	measure 'Portfolio Daily Drawdown' = ```
+			
+			VAR _CurrentDate = MAX(dim_date[date_key])
+			VAR _PortfolioToDate = 
+			    CALCULATETABLE(
+			        SUMMARIZE(
+			            fct_daily_positions,
+			            fct_daily_positions[date_key],
+			            "@NAV", SUM(fct_daily_positions[market_value])
+			        ),
+			        fct_daily_positions[date_key] <= _CurrentDate,
+			        REMOVEFILTERS(dim_date)
+			    )
+			VAR _CurrentNAV = 
+			    CALCULATE(
+			        SUM(fct_daily_positions[market_value]),
+			        fct_daily_positions[date_key] = _CurrentDate
+			    )
+			VAR _PeakNAV = MAXX(_PortfolioToDate, [@NAV])
+			RETURN
+			    IF(
+			        NOT ISBLANK(_CurrentNAV) && _PeakNAV > 0,
+			        DIVIDE(_CurrentNAV - _PeakNAV, _PeakNAV),
+			        BLANK()
+			    )
+			```
+		formatString: 0.00\ %;-0.00\ %;0.00\ %
+		lineageTag: 3c8a9843-4799-4d1f-9200-39e8a9d9f882
+
+	measure 'Asset Beta' = ```
+			
+			VAR _BenchmarkKey = 1 -- SPY
+			VAR _AssetKey = SELECTEDVALUE(dim_asset[asset_key])
+			VAR _AssetReturns = 
+			    CALCULATETABLE(
+			        SELECTCOLUMNS(
+			            fct_asset_prices,
+			            "DateKey", fct_asset_prices[date_key],
+			            "ReturnAsset", fct_asset_prices[return_1d]
+			        ),
+			        fct_asset_prices[asset_key] = _AssetKey,
+			        REMOVEFILTERS(dim_asset)
+			    )
+			VAR _BenchmarkReturns = 
+			    CALCULATETABLE(
+			        SELECTCOLUMNS(
+			            fct_asset_prices,
+			            "DateKey", fct_asset_prices[date_key],
+			            "ReturnBench", fct_asset_prices[return_1d]
+			        ),
+			        fct_asset_prices[asset_key] = _BenchmarkKey,
+			        REMOVEFILTERS(dim_asset)
+			    )
+			VAR _JoinedReturns = 
+			    NATURALINNERJOIN(_AssetReturns, _BenchmarkReturns)
+			VAR _AvgAsset = AVERAGEX(_JoinedReturns, [ReturnAsset])
+			VAR _AvgBench = AVERAGEX(_JoinedReturns, [ReturnBench])
+			VAR _Covariance = 
+			    SUMX(
+			        _JoinedReturns,
+			        ([ReturnAsset] - _AvgAsset) * ([ReturnBench] - _AvgBench)
+			    )
+			VAR _BenchVariance = 
+			    SUMX(
+			        _JoinedReturns,
+			        ([ReturnBench] - _AvgBench) * ([ReturnBench] - _AvgBench)
+			    )
+			RETURN
+			    IF(
+			        _BenchVariance > 0,
+			        DIVIDE(_Covariance, _BenchVariance),
+			        BLANK()
+			    )
+			```
+		formatString: 0.00
+		lineageTag: 593cf953-da5a-4cd9-ab61-599aef6d3c80
+
+	measure 'Asset Alpha' = ```
+			
+			VAR _BenchmarkKey = 1 -- SPY
+			VAR _BenchmarkDailyReturns = 
+			    CALCULATETABLE(
+			        SELECTCOLUMNS(
+			            fct_asset_prices,
+			            "DateKey", fct_asset_prices[date_key],
+			            "BenchReturn", fct_asset_prices[return_1d]
+			        ),
+			        fct_asset_prices[asset_key] = _BenchmarkKey,
+			        REMOVEFILTERS(dim_asset)
+			    )
+			VAR _BenchAvgReturn = AVERAGEX(_BenchmarkDailyReturns, [BenchReturn])
+			VAR _BenchAnnualized = _BenchAvgReturn * 252
+			VAR _AssetReturn = [Asset Return Annualized]
+			VAR _Beta = [Asset Beta]
+			RETURN
+			    IF(
+			        NOT ISBLANK(_Beta) && NOT ISBLANK(_AssetReturn),
+			        _AssetReturn - (_Beta * _BenchAnnualized),
+			        BLANK()
+			    )
+			```
+		formatString: 0.00\ %;-0.00\ %;0.00\ %
+		lineageTag: 33f8c40d-774e-4802-bc26-2fd2da1979c2
+
+	measure 'Sharpe Ratio' = ```
+			
+			VAR _DailyPortfolio = 
+			    CALCULATETABLE(
+			        SUMMARIZE(
+			            fct_daily_positions,
+			            fct_daily_positions[date_key],
+			            "@NAV", SUM(fct_daily_positions[market_value])
+			        ),
+			        REMOVEFILTERS(dim_date),
+			        REMOVEFILTERS(dim_asset)
+			    )
+			VAR _ValidDays = FILTER(_DailyPortfolio, [@NAV] > 0)
+			VAR _WithPrev = 
+			    ADDCOLUMNS(
+			        _ValidDays,
+			        "@PrevDate", 
+			            VAR _D = fct_daily_positions[date_key]
+			            RETURN MAXX(FILTER(_ValidDays, fct_daily_positions[date_key] < _D), fct_daily_positions[date_key])
+			    )
+			VAR _ReturnsTable = 
+			    ADDCOLUMNS(
+			        FILTER(_WithPrev, NOT ISBLANK([@PrevDate])),
+			        "@DailyRet",
+			            VAR _PKey = [@PrevDate]
+			            VAR _PNAV = MAXX(FILTER(_ValidDays, fct_daily_positions[date_key] = _PKey), [@NAV])
+			            RETURN DIVIDE([@NAV] - _PNAV, _PNAV)
+			    )
+			VAR _MeanDaily = AVERAGEX(_ReturnsTable, [@DailyRet])
+			VAR _StdDaily = STDEVX.S(_ReturnsTable, [@DailyRet])
+			VAR _AnnualReturn = _MeanDaily * 252
+			VAR _AnnualVol = _StdDaily * SQRT(252)
+			VAR _Rf = 0.0
+			RETURN
+			    IF(
+			        NOT ISBLANK(_AnnualVol) && _AnnualVol > 0,
+			        DIVIDE(_AnnualReturn - _Rf, _AnnualVol),
+			        BLANK()
+			    )
+			```
+		lineageTag: 3cfdcd67-2931-4e1d-a4f6-9d4929994c72
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column Row
+		lineageTag: 60a7cc2d-1423-425e-a855-f5a72b8fbc65
+		isNameInferred
+		sourceColumn: [Row]
+
+	partition _Measures = calculated
+		source = Row("Row", 1)
+
+	annotation PBI_ResultType = Table
+

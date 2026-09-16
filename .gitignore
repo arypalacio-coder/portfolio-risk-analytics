@@ -1,0 +1,9 @@
+﻿# Power BI Project (PBIP) exclusions
+**/cache.abf
+**/localSettings.json
+*.pbit.tmp
+~*
+
+# OS files
+.DS_Store
+Thumbs.db
